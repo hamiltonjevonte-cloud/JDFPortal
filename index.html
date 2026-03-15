@@ -348,6 +348,9 @@
                 document.getElementById('recording-indicator').classList.remove('hidden');
                 document.getElementById('camera-feed').srcObject = videoStream;
                 document.getElementById('camera-feed').classList.remove('hidden');
+
+                // Auto-start the recording
+                startRecording();
                 
             } catch (err) {
                 alert('Camera/Microphone access denied. Continuing training without recording.');
