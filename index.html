@@ -1,0 +1,726 @@
+ <!doctype html>
+<html lang="en" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JDF Soldier Training Simulation</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="/_sdk/data_sdk.js"></script>
+  <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        :root {
+            --primary-bg: #0f110c;
+            --surface-bg: #1a1d17;
+            --accent-green: #4ade80;
+            --jdf-gold: #fcd34d;
+            --text-main: #f3f4f6;
+        }
+
+        body {
+            font-family: 'Space+Grotesk', sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+        }
+
+        .tactical-grid {
+            background-image: radial-gradient(circle, rgba(74, 222, 128, 0.1) 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+
+        .mono { font-family: 'JetBrains+Mono', monospace; }
+
+        .glass-panel {
+            background: rgba(26, 29, 23, 0.8);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(74, 222, 128, 0.2);
+        }
+
+        .btn-pulse:hover {
+            box-shadow: 0 0 15px rgba(74, 222, 128, 0.4);
+        }
+
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+
+        .scanline {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: rgba(74, 222, 128, 0.1);
+            animation: scanline 4s linear infinite;
+            pointer-events: none;
+        }
+
+        .simulation-active {
+            border-color: var(--jdf-gold);
+            box-shadow: 0 0 20px rgba(252, 211, 77, 0.2);
+        }
+    </style>
+  <style>body { box-sizing: border-box; }</style>
+ </head>
+ <body class="h-full overflow-auto tactical-grid">
+  <div id="app-root" class="w-full h-full flex flex-col"><!-- Header -->
+   <header class="w-full border-b border-green-900/50 bg-[#0f110c]/90 sticky top-0 z-50 px-6 py-4 flex justify-between items-center">
+    <div class="flex items-center gap-3">
+     <div class="p-2 bg-green-900/30 rounded-lg border border-green-500/30"><i data-lucide="shield" class="text-green-400 w-6 h-6"></i>
+     </div>
+     <div>
+      <h1 id="header-title" class="text-xl font-bold tracking-tight uppercase">JDF SIMULATION CENTER</h1>
+      <p class="text-[10px] text-green-500/70 mono tracking-widest uppercase">Operational Readiness System v4.0</p>
+     </div>
+    </div>
+    <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-gray-400"><a href="#" class="hover:text-green-400 transition-colors">DASHBOARD</a> <a href="#" class="hover:text-green-400 transition-colors">TRAINING LOGS</a> <a href="#" class="hover:text-green-400 transition-colors">RESOURCES</a>
+    </nav>
+    <div class="flex items-center gap-4">
+     <div class="hidden sm:flex flex-col items-end"><span class="text-[10px] text-gray-500 mono">CONN_STATUS</span> <span class="text-xs text-green-400 mono">SECURE_LINK_ACTIVE</span>
+     </div>
+     <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+    </div>
+   </header>
+   <main class="flex-grow w-full max-w-7xl mx-auto p-6 space-y-8"><!-- Hero Section -->
+    <section class="relative overflow-hidden rounded-2xl p-8 lg:p-12 glass-panel">
+     <div class="scanline"></div>
+     <div class="relative z-10 max-w-2xl">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-900/30 border border-green-500/30 text-green-400 text-xs font-bold mb-6"><i data-lucide="target" class="w-3 h-3"></i> MISSION CRITICAL
+      </div>
+      <h2 id="hero-main-title" class="text-4xl lg:text-5xl font-extrabold mb-4 leading-tight">Ready for Deployment?</h2>
+      <p id="hero-sub-text" class="text-lg text-gray-400 mb-8">Test your decision-making and strategic skills in high-pressure virtual environments designed for the Jamaica Defence Force.</p>
+      <div class="flex flex-wrap gap-4"><button onclick="startTraining()" class="px-8 py-3 bg-green-500 hover:bg-green-400 text-black font-bold rounded-lg transition-all btn-pulse flex items-center gap-2"> <i data-lucide="play" class="w-5 h-5 fill-current"></i> START TRAINING </button>
+      </div>
+     </div>
+     <div class="absolute right-0 top-0 h-full w-1/3 opacity-10 pointer-events-none hidden lg:block"><i data-lucide="map" class="w-full h-full text-green-500"></i>
+     </div>
+    </section><!-- Main Content Area -->
+    <div class="grid lg:grid-cols-3 gap-8"><!-- Simulation Area -->
+     <div class="lg:col-span-2 space-y-6">
+      <div id="sim-container" class="glass-panel rounded-xl overflow-hidden min-h-[400px] flex flex-col">
+       <div class="bg-green-900/20 border-b border-green-900/50 px-6 py-3 flex justify-between items-center">
+        <h3 id="briefing-title-text" class="text-sm font-bold uppercase tracking-widest flex items-center gap-2"><i data-lucide="file-text" class="w-4 h-4 text-green-400"></i> Current Operational Briefing</h3>
+        <div class="flex gap-2"><span id="sim-timer" class="text-xs mono text-green-500 bg-black/40 px-2 py-1 rounded">TIME: 00:00</span>
+         <div id="recording-indicator" class="hidden flex items-center gap-1 px-2 py-1 rounded bg-red-500/20 border border-red-500/50">
+          <div class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div><span class="text-[10px] mono text-red-400 font-bold">REC</span>
+         </div>
+        </div>
+       </div>
+       <video id="camera-feed" autoplay muted playsinline class="hidden w-96 h-96 object-cover bg-black border-b border-green-900/50"></video>
+       <div id="sim-content" class="flex-grow p-8 flex flex-col items-center justify-center text-center"><!-- Initial State -->
+        <div id="sim-start-view" class="max-w-md">
+         <div class="w-20 h-20 bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-dashed border-green-500/30"><i data-lucide="activity" class="w-10 h-10 text-green-400"></i>
+         </div>
+         <h4 class="text-2xl font-bold mb-4">Module 01: Physical Training</h4>
+         <p id="mission-desc-text" class="text-gray-400 mb-8 italic">Select your exercise and target reps, then start training. The AI will monitor your performance and grade you.</p>
+         <div class="mb-6">
+          <label class="block text-sm font-bold mb-2">Target Reps:</label>
+          <input type="number" id="target-reps" class="w-full p-3 rounded bg-white/10 border border-white/20 text-white" placeholder="e.g. 40" min="1">
+         </div>
+         <div class="mb-6">
+          <label class="block text-sm font-bold mb-2">Select Exercise:</label>
+          <select id="exercise-select" class="w-full p-3 rounded bg-white/10 border border-white/20 text-white">
+           <option value="push-ups">Push Ups</option>
+           <option value="pull-ups">Pull Ups</option>
+           <option value="sit-ups">Sit Ups</option>
+           <option value="squats">Squats</option>
+           <option value="burpees">Burpees</option>
+           <option value="planks">Planks</option>
+          </select>
+         </div>
+         <div class="grid grid-cols-2 gap-4 text-left">
+          <div class="p-3 rounded bg-white/5 border border-white/10">
+           <p class="text-[10px] text-gray-500 uppercase font-bold">Complexity</p>
+           <p class="text-sm font-bold">INTERMEDIATE</p>
+          </div>
+          <div class="p-3 rounded bg-white/5 border border-white/10">
+           <p class="text-[10px] text-gray-500 uppercase font-bold">Estimated Time</p>
+           <p class="text-sm font-bold">5-8 MINS</p>
+          </div>
+         </div>
+        </div><!-- Interactive Simulator View -->
+        <div id="sim-active-view" class="hidden w-full max-w-2xl text-left">
+         <div class="mb-8">
+          <div id="scenario-progress" class="h-1 w-full bg-white/5 rounded-full mb-6 overflow-hidden">
+           <div id="progress-bar" class="h-full bg-green-500 transition-all duration-500" style="width: 100%;"></div>
+          </div>
+          <h4 id="scenario-title" class="text-2xl font-bold mb-4 text-jdf-gold">Training: Push Ups</h4>
+          <p id="scenario-text" class="text-lg leading-relaxed text-gray-300">Perform 40 push ups. The camera is monitoring your form. Use the recording controls below.</p>
+          <div class="mb-4 flex gap-4">
+           <button id="start-recording-btn" onclick="startRecordingManual()" class="px-4 py-2 bg-green-500 text-black rounded hover:bg-green-400">Start Recording</button>
+           <button id="stop-recording-btn" onclick="stopRecordingManual()" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600" disabled>Stop Recording</button>
+          </div>
+          <div class="h-8"></div>
+          <div class="mb-4">
+           <button id="voiceBtn" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-400">Voice Assistant 🎤</button>
+           <p id="voiceStatus" class="text-xs text-gray-400 mt-2"></p>
+          </div>
+         </div>
+         <div id="options-container" class="grid gap-4"><!-- Options injected here -->
+         </div>
+        </div><!-- Result View -->
+        <div id="sim-result-view" class="hidden w-full max-w-md">
+         <div class="mb-6 p-6 rounded-xl bg-green-500/10 border border-green-500/30">
+          <h4 class="text-3xl font-black text-green-400 mb-2">MISSION COMPLETE</h4>
+          <div class="text-5xl font-bold mono mb-4" id="final-score">
+           SCORE: 0
+          </div>
+          <div class="mb-4 p-4 rounded-lg bg-black/30 border border-white/10 text-center">
+           <p class="text-xs text-gray-400 mb-2">PERFORMANCE RATING</p>
+           <p id="performance-grade" class="text-3xl font-black"></p>
+          </div>
+          <p id="result-feedback" class="text-gray-400"></p>
+         </div>
+         <div class="mb-4 p-3 rounded-lg bg-blue-900/20 border border-blue-500/30 text-xs text-blue-300">
+          <p class="font-bold mb-1">Recording Session</p>
+          <p id="session-id-display" class="mono text-[10px] break-all"></p>
+         </div>
+         <button onclick="resetSimulation()" class="w-full py-3 border border-white/20 hover:bg-white/5 rounded-lg transition-colors flex items-center justify-center gap-2"> <i data-lucide="refresh-cw" class="w-4 h-4"></i> RETRY SIMULATION </button>
+        </div>
+       </div>
+      </div>
+      <div id="recording-section" class="glass-panel rounded-xl p-6 hidden">
+       <h3 class="text-lg font-bold mb-4">Training Recording</h3>
+       <video id="playback" controls class="w-full rounded"></video>
+       <a id="downloadLink" class="inline-block mt-2 text-green-400 hover:text-green-300 underline" download>Download Recording</a>
+      </div>
+     </div><!-- Sidebar / Data Logs -->
+     <div class="space-y-6">
+      <div class="glass-panel rounded-xl p-6">
+       <div class="flex items-center justify-between mb-6">
+        <h3 class="font-bold flex items-center gap-2"><i data-lucide="history" class="w-4 h-4 text-green-400"></i> TRAINING LOGS</h3><span class="text-[10px] px-2 py-0.5 rounded bg-white/10 mono" id="log-count">0 ENTRIES</span>
+       </div>
+       <div id="logs-container" class="space-y-3 max-h-[400px] overflow-auto pr-2 custom-scrollbar"><!-- Logs will be injected here -->
+        <div class="text-center py-8 text-gray-500 italic text-sm">
+         No mission data recorded yet.
+        </div>
+       </div>
+      </div>
+      <div class="glass-panel rounded-xl p-6 border-amber-900/30">
+       <h3 class="font-bold flex items-center gap-2 text-amber-400 mb-4"><i data-lucide="alert-triangle" class="w-4 h-4"></i> STATUS ADVISORY</h3>
+       <p class="text-sm text-gray-400 leading-relaxed">Soldiers are reminded that simulations are for training purposes. Real-world operations require strict adherence to command orders and safety protocols.</p>
+      </div>
+     </div>
+    </div>
+   </main>
+   <footer class="w-full border-t border-white/5 bg-black/40 py-6 px-6 mt-8">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+     <p class="text-xs text-gray-500 uppercase tracking-widest">© 2024 JAMAICA DEFENCE FORCE DIGITAL TRAINING DIVISION</p>
+     <div class="flex gap-6 text-xs text-gray-500 uppercase font-bold"><a href="#" class="hover:text-green-400">Security Policy</a> <a href="#" class="hover:text-green-400">Training Standards</a> <a href="#" class="hover:text-green-400">Technical Support</a>
+     </div>
+    </div>
+   </footer>
+  </div><!-- Loading Overlay -->
+  <div id="loading-overlay" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] hidden items-center justify-center flex-col">
+   <div class="w-12 h-12 border-4 border-green-500/20 border-t-green-500 rounded-full animate-spin mb-4"></div>
+   <p class="mono text-green-400 animate-pulse">TRANSMITTING MISSION DATA...</p>
+  </div>
+  <script>
+        // --- DATA & ELEMENT SDK INITIALIZATION ---
+        let config = {};
+        const defaultConfig = {
+            project_title: "JDF Soldier Training Simulation",
+            hero_subtitle: "Interactive Readiness & Tactical Decision Training",
+            briefing_title: "Current Operational Briefing",
+            mission_desc: "Select a simulation module below to begin your tactical evaluation."
+        };
+
+        // Mission Scenarios
+        const scenarios = [
+            {
+                title: "Urban Reconnaissance",
+                text: "Your unit is patrolling an urban sector. You spot suspicious movement in an abandoned warehouse 200 meters ahead. Visibility is low.",
+                options: [
+                    { text: "Deploy drone for aerial surveillance before approaching.", score: 100, feedback: "Correct. Modern reconnaissance minimizes risk." },
+                    { text: "Advance immediately with rifles ready to catch them off-guard.", score: 40, feedback: "High risk. Advancing without intel leads to ambushes." },
+                    { text: "Call for heavy support and level the building.", score: 10, feedback: "Excessive force. High potential for collateral damage." }
+                ]
+            },
+            {
+                title: "Civilians in Area",
+                text: "During the operation, a group of non-combatants approaches your position requesting aid. One seems to be hiding something under their cloak.",
+                options: [
+                    { text: "Maintain distance and use verbal commands for a search.", score: 100, feedback: "Professional. Balances humanitarian aid with security." },
+                    { text: "Detain everyone immediately using physical force.", score: 50, feedback: "Escalated too quickly. May cause civilian unrest." },
+                    { text: "Allow them to enter your secure zone to provide medical help.", score: 20, feedback: "Security breach. You've compromised the perimeter." }
+                ]
+            },
+            {
+                title: "Communication Blackout",
+                text: "Your primary radio link fails. You are deep in the sector. You hear gunfire three blocks North.",
+                options: [
+                    { text: "Establish a secondary line and hold position until link is restored.", score: 90, feedback: "Standard protocol. Coordination is key." },
+                    { text: "Sprint towards the gunfire to support any friendly units.", score: 60, feedback: "Brave but disorganized. You might run into a trap." },
+                    { text: "Retreat to the extraction point immediately.", score: 40, feedback: "Withdrawal without orders should be a last resort." }
+                ]
+            }
+        ];
+
+        let currentScenarioIndex = 0;
+        let totalScore = 0;
+        let simInterval = null;
+        let secondsElapsed = 0;
+        let trainingHistory = [];
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let videoStream = null;
+        let isRecording = false;
+        let videoSessionId = null;
+        let decisionTimes = [];
+
+        // Data SDK Handler
+        const dataHandler = {
+            onDataChanged(data) {
+                trainingHistory = data;
+                renderLogs();
+            }
+        };
+
+        async function initApp() {
+            // Initialize Element SDK
+            if (window.elementSdk) {
+                window.elementSdk.init({
+                    defaultConfig,
+                    onConfigChange: async (newConfig) => {
+                        config = { ...defaultConfig, ...newConfig };
+                        updateUI();
+                    },
+                    mapToCapabilities: (cfg) => ({
+                        recolorables: [],
+                        fontEditable: undefined,
+                        fontSizeable: undefined
+                    }),
+                    mapToEditPanelValues: (cfg) => new Map([
+                        ["project_title", cfg.project_title || defaultConfig.project_title],
+                        ["hero_subtitle", cfg.hero_subtitle || defaultConfig.hero_subtitle],
+                        ["briefing_title", cfg.briefing_title || defaultConfig.briefing_title],
+                        ["mission_desc", cfg.mission_desc || defaultConfig.mission_desc]
+                    ])
+                });
+            }
+
+            // Initialize Data SDK
+            if (window.dataSdk) {
+                const result = await window.dataSdk.init(dataHandler);
+                if (!result.isOk) console.error("Data SDK Init Failed");
+            }
+
+            lucide.createIcons();
+        }
+
+        function updateUI() {
+            document.getElementById('header-title').textContent = config.project_title;
+            document.getElementById('hero-main-title').textContent = config.project_title;
+            document.getElementById('hero-sub-text').textContent = config.hero_subtitle;
+            document.getElementById('briefing-title-text').innerHTML = `<i data-lucide="file-text" class="w-4 h-4 text-green-400"></i> ${config.briefing_title}`;
+            document.getElementById('mission-desc-text').textContent = config.mission_desc;
+            lucide.createIcons();
+        }
+
+        // --- SIMULATION LOGIC ---
+
+        async function startTraining() {
+            const exercise = document.getElementById('exercise-select').value;
+            const targetReps = parseInt(document.getElementById('target-reps').value) || 20;
+            currentScenarioIndex = 0;
+            totalScore = 0;
+            secondsElapsed = 0;
+            decisionTimes = [];
+            videoSessionId = "SESSION_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
+            
+            // Request camera and microphone access
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: 1280, height: 720 }, 
+                    audio: true 
+                });
+                
+                mediaRecorder = new MediaRecorder(videoStream);
+                recordedChunks = [];
+                isRecording = false;
+                
+                // Show recording indicators
+                document.getElementById('recording-indicator').classList.remove('hidden');
+                document.getElementById('camera-feed').srcObject = videoStream;
+                document.getElementById('camera-feed').classList.remove('hidden');
+                
+            } catch (err) {
+                alert('Camera/Microphone access denied. Continuing training without recording.');
+                console.error('Media access error:', err);
+            }
+            
+            document.getElementById('sim-start-view').classList.add('hidden');
+            document.getElementById('sim-active-view').classList.remove('hidden');
+            document.getElementById('sim-result-view').classList.add('hidden');
+            document.getElementById('sim-container').classList.add('simulation-active');
+            
+            startTimer();
+            showTrainingScenario(exercise, targetReps);
+        }
+        
+        function startRecording() {
+            if (!mediaRecorder) return;
+            
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    recordedChunks.push(event.data);
+                }
+            };
+            
+            mediaRecorder.onstart = () => {
+                isRecording = true;
+            };
+            
+            mediaRecorder.start();
+        }
+        
+        function stopRecording() {
+            return new Promise((resolve) => {
+                if (!mediaRecorder || !isRecording) {
+                    resolve(null);
+                    return;
+                }
+                
+                mediaRecorder.onstop = () => {
+                    isRecording = false;
+                    
+                    // Stop all tracks
+                    if (videoStream) {
+                        videoStream.getTracks().forEach(track => track.stop());
+                    }
+                    
+                    // Create blob from recorded chunks
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    recordedChunks = [];
+                    
+                    resolve(blob);
+                };
+                
+                mediaRecorder.stop();
+            });
+        }
+
+        function startTimer() {
+            if (simInterval) clearInterval(simInterval);
+            simInterval = setInterval(() => {
+                secondsElapsed++;
+                const mins = Math.floor(secondsElapsed / 60).toString().padStart(2, '0');
+                const secs = (secondsElapsed % 60).toString().padStart(2, '0');
+                document.getElementById('sim-timer').textContent = `TIME: ${mins}:${secs}`;
+            }, 1000);
+        }
+
+        function showTrainingScenario(exercise, targetReps) {
+            document.getElementById('progress-bar').style.width = '100%';
+            document.getElementById('scenario-title').textContent = `Training: ${exercise.replace('-', ' ').toUpperCase()}`;
+            document.getElementById('scenario-text').textContent = `Perform ${targetReps} ${exercise.replace('-', ' ')}s. Use the recording controls to capture your performance. Click 'Finish Exercise' when done.`;
+            
+            const optionsContainer = document.getElementById('options-container');
+            optionsContainer.innerHTML = '';
+            
+            const btn = document.createElement('button');
+            btn.className = "w-full p-4 text-center border border-white/10 rounded-lg hover:border-red-500 hover:bg-red-500/5 transition-all group flex items-center justify-center gap-4";
+            btn.innerHTML = `
+                <i data-lucide="stop-circle" class="w-5 h-5 text-red-500"></i>
+                <div class="flex-grow">Finish Exercise</div>
+            `;
+            btn.onclick = () => endTraining(exercise, targetReps);
+            optionsContainer.appendChild(btn);
+            lucide.createIcons();
+        }
+
+        function startRecordingManual() {
+            if (!isRecording && mediaRecorder) {
+                startRecording();
+                document.getElementById('start-recording-btn').disabled = true;
+                document.getElementById('stop-recording-btn').disabled = false;
+            }
+        }
+
+        function stopRecordingManual() {
+            if (isRecording && mediaRecorder) {
+                stopRecording();
+                document.getElementById('start-recording-btn').disabled = false;
+                document.getElementById('stop-recording-btn').disabled = true;
+            }
+        }
+
+        function selectOption(option) {
+            totalScore += option.score;
+            decisionTimes.push(secondsElapsed);
+            currentScenarioIndex++;
+            
+            if (currentScenarioIndex < scenarios.length) {
+                showScenario();
+            } else {
+                endSimulation();
+            }
+        }
+
+        async function endTraining(exercise, targetReps) {
+            clearInterval(simInterval);
+            document.getElementById('sim-active-view').classList.add('hidden');
+            document.getElementById('sim-result-view').classList.remove('hidden');
+            document.getElementById('sim-container').classList.remove('simulation-active');
+            
+            // Stop recording if active
+            let videoBlob = null;
+            if (isRecording) {
+                videoBlob = await stopRecording();
+            }
+            document.getElementById('camera-feed').classList.add('hidden');
+            document.getElementById('recording-indicator').classList.add('hidden');
+            
+            // Set up playback and download if recorded
+            if (videoBlob) {
+                const videoURL = URL.createObjectURL(videoBlob);
+                document.getElementById('playback').src = videoURL;
+                document.getElementById('downloadLink').href = videoURL;
+                document.getElementById('downloadLink').download = "training-recording.webm";
+                document.getElementById('recording-section').classList.remove('hidden');
+            }
+            
+            // Show reps input
+            document.getElementById('final-score').innerHTML = `
+                <div class="mb-4">
+                    <label class="block text-sm font-bold mb-2">How many ${exercise.replace('-', ' ')}s did you complete?</label>
+                    <input type="number" id="actual-reps" class="w-full p-3 rounded bg-white/10 border border-white/20 text-white" placeholder="e.g. 35" min="0">
+                </div>
+                <button onclick="submitReps('${exercise}', ${targetReps})" class="w-full p-3 bg-green-500 hover:bg-green-400 text-black font-bold rounded-lg transition-all">Submit & Get Grade</button>
+            `;
+        }
+
+        async function submitReps(exercise, targetReps) {
+            const actualReps = parseInt(document.getElementById('actual-reps').value) || 0;
+            const completion = (actualReps / targetReps) * 100;
+            
+            let performanceGrade, gradeColor, feedback;
+            if (completion >= 100) {
+                performanceGrade = 'A';
+                gradeColor = 'text-green-400';
+                feedback = "Excellent! You exceeded the target. Superior physical performance.";
+            } else if (completion >= 80) {
+                performanceGrade = 'B';
+                gradeColor = 'text-blue-400';
+                feedback = "Good job! You met most of the target. Solid performance.";
+            } else if (completion >= 60) {
+                performanceGrade = 'C';
+                gradeColor = 'text-yellow-400';
+                feedback = "Passable. You completed some reps but fell short of the target.";
+            } else if (completion >= 40) {
+                performanceGrade = 'D';
+                gradeColor = 'text-orange-400';
+                feedback = "Below average. More effort needed to meet training standards.";
+            } else {
+                performanceGrade = 'F';
+                gradeColor = 'text-red-400';
+                feedback = "Fail. Did not meet minimum requirements. Remedial training required.";
+            }
+            
+            document.getElementById('final-score').innerHTML = `SCORE: ${actualReps}/${targetReps}`;
+            document.getElementById('result-feedback').textContent = feedback;
+            document.getElementById('performance-grade').innerHTML = `Grade: <span class="${gradeColor} font-black text-3xl">${performanceGrade}</span>`;
+            document.getElementById('session-id-display').textContent = videoSessionId;
+
+            // Save to Data SDK
+            if (window.dataSdk) {
+                if (trainingHistory.length >= 999) return;
+                
+                showLoading(true);
+                const result = await window.dataSdk.create({
+                    soldier_id: "SOLDIER_" + Math.floor(Math.random() * 9000 + 1000),
+                    mission_name: `${exercise.replace('-', ' ').toUpperCase()} Training`,
+                    score: Math.round(completion),
+                    timestamp: new Date().toISOString(),
+                    outcome: completion >= 60 ? "PASS" : "FAIL",
+                    actual_reps: actualReps,
+                    target_reps: targetReps,
+                    video_session_id: videoSessionId
+                });
+                showLoading(false);
+            }
+        }
+        }
+            
+            const avgScore = Math.round(totalScore / scenarios.length);
+            document.getElementById('final-score').textContent = `SCORE: ${avgScore}%`;
+            
+            // Calculate performance grade based on score and decision speed
+            let performanceGrade = 'D';
+            let gradeColor = 'text-red-400';
+            
+            if (avgScore >= 85) {
+                performanceGrade = 'A';
+                gradeColor = 'text-green-400';
+            } else if (avgScore >= 75) {
+                performanceGrade = 'B';
+                gradeColor = 'text-green-300';
+            } else if (avgScore >= 65) {
+                performanceGrade = 'C';
+                gradeColor = 'text-yellow-400';
+            } else if (avgScore >= 55) {
+                performanceGrade = 'D';
+                gradeColor = 'text-orange-400';
+            }
+            
+            let feedback = "Incomplete evaluation.";
+            if (avgScore >= 80) feedback = "Excellent performance. Superior tactical awareness and risk management demonstrated.";
+            else if (avgScore >= 60) feedback = "Passable results. Some decisions put the unit at unnecessary risk. Review protocol guidelines.";
+            else feedback = "Fail. Tactical errors recorded. Mandatory remedial training required.";
+            
+            document.getElementById('result-feedback').textContent = feedback;
+            document.getElementById('performance-grade').innerHTML = `Grade: <span class="${gradeColor} font-black text-3xl">${performanceGrade}</span>`;
+            document.getElementById('session-id-display').textContent = videoSessionId;
+
+            // Calculate average decision time
+            const avgDecisionTime = decisionTimes.length > 0 ? Math.round(decisionTimes.reduce((a, b) => a + b, 0) / decisionTimes.length) : 0;
+
+            // Save to Data SDK
+            if (window.dataSdk) {
+                if (trainingHistory.length >= 999) return;
+                
+                showLoading(true);
+                const result = await window.dataSdk.create({
+                    soldier_id: "SOLDIER_" + Math.floor(Math.random() * 9000 + 1000),
+                    mission_name: "Tactical Decision Module",
+                    score: avgScore,
+                    timestamp: new Date().toISOString(),
+                    outcome: avgScore >= 70 ? "PASS" : "FAIL",
+                    decision_time: avgDecisionTime,
+                    video_session_id: videoSessionId,
+                    performance_grade: performanceGrade
+                });
+                showLoading(false);
+            }
+        }
+
+        function resetSimulation() {
+            document.getElementById('sim-result-view').classList.add('hidden');
+            document.getElementById('sim-start-view').classList.remove('hidden');
+            document.getElementById('sim-timer').textContent = "TIME: 00:00";
+            document.getElementById('recording-section').classList.add('hidden');
+            document.getElementById('start-recording-btn').disabled = false;
+            document.getElementById('stop-recording-btn').disabled = true;
+        }
+
+        function renderLogs() {
+            const container = document.getElementById('logs-container');
+            document.getElementById('log-count').textContent = `${trainingHistory.length} ENTRIES`;
+            
+            if (trainingHistory.length === 0) {
+                container.innerHTML = `<div class="text-center py-8 text-gray-500 italic text-sm">No mission data recorded yet.</div>`;
+                return;
+            }
+
+            container.innerHTML = trainingHistory.slice().reverse().map(log => {
+                const date = new Date(log.timestamp).toLocaleDateString();
+                const statusColor = log.outcome === "PASS" ? "text-green-400" : "text-red-400";
+                const bgStatus = log.outcome === "PASS" ? "bg-green-400/10 border-green-400/20" : "bg-red-400/10 border-red-400/20";
+                const gradeColor = {
+                    'A': 'text-green-400',
+                    'B': 'text-green-300',
+                    'C': 'text-yellow-400',
+                    'D': 'text-orange-400'
+                }[log.performance_grade] || 'text-gray-400';
+                
+                return `
+                    <div class="p-3 rounded-lg border ${bgStatus} text-xs flex justify-between items-center group">
+                        <div class="flex flex-col gap-1">
+                            <div class="flex items-center gap-2">
+                                <span class="mono text-[10px] text-gray-500">${log.soldier_id}</span>
+                                <span class="font-bold">${log.score}%</span>
+                                <span class="font-bold ${gradeColor}">Grade ${log.performance_grade}</span>
+                            </div>
+                            <span class="text-gray-400 text-[10px]">${date}</span>
+                        </div>
+                        <div class="flex flex-col items-end">
+                            <span class="font-bold ${statusColor}">${log.outcome}</span>
+                            <span class="text-[10px] text-gray-500 mono">ID: ${log.video_session_id}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading-overlay').style.display = show ? 'flex' : 'none';
+        }
+
+        // Voice Assistant
+        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        if(recognition){
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            document.getElementById("voiceBtn").onclick = function(){
+                recognition.start();
+                document.getElementById("voiceStatus").innerText = "Listening...";
+            };
+
+            recognition.onresult = function(event){
+                let command = event.results[0][0].transcript.toLowerCase();
+                document.getElementById("voiceStatus").innerText = "Heard: " + command;
+                processCommand(command);
+            };
+
+            recognition.onerror = function(event){
+                document.getElementById("voiceStatus").innerText = "Error: " + event.error;
+            };
+
+            recognition.onend = function(){
+                document.getElementById("voiceStatus").innerText = "";
+            };
+        } else {
+            document.getElementById("voiceBtn").style.display = "none";
+            document.getElementById("voiceStatus").innerText = "Voice recognition not supported.";
+        }
+
+        function processCommand(command){
+            if(command.includes("start") || command.includes("begin")){
+                let exercise = "";
+                if(command.includes("push")) exercise = "Push Ups";
+                else if(command.includes("pull")) exercise = "Pull Ups";
+                else if(command.includes("sit")) exercise = "Sit Ups";
+                else if(command.includes("squat")) exercise = "Squats";
+                
+                if(exercise){
+                    document.getElementById("exercise-select").value = exercise;
+                    startTraining();
+                    speak("Starting " + exercise.toLowerCase() + ".");
+                } else {
+                    speak("Please specify which exercise to start, like start push ups.");
+                }
+            } else if(command.includes("stop") || command.includes("finish") || command.includes("end")){
+                endTraining(document.getElementById("exercise-select").value, parseInt(document.getElementById("target-reps").value));
+                speak("Finishing exercise.");
+            } else if(command.includes("record") && command.includes("start")){
+                startRecordingManual();
+                speak("Recording started.");
+            } else if(command.includes("stop") && command.includes("record") || command.includes("stop recording")){
+                stopRecordingManual();
+                speak("Recording stopped.");
+            } else {
+                speak("Command not recognized. Try saying start push ups, stop, record, or finish.");
+            }
+        }
+
+        function speak(text){
+            if('speechSynthesis' in window){
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = 1;
+                utterance.pitch = 1;
+                speechSynthesis.speak(utterance);
+            }
+        }
+
+        // Run
+        initApp();
+    </script>
+ </body>
+</html>
